@@ -1,6 +1,12 @@
+/*
+ * gpio.h
+ *
+ *  Created on: Nov 3, 2026
+ *      Author: ADMIN
+ */
 
-#ifndef GPIO_H
-#define GPIO_H
+#ifndef DRIVERS_GPIO_H_
+#define DRIVERS_GPIO_H_
 
 #include <stdint.h>		/* Header for standard integer types (like uint32_t) */
 
@@ -116,4 +122,4 @@ GPIO_PinState_t GPIO_Read_Pin(GPIO_TypeDef * port, GPIO_Pin_t pin);
 void GPIO_Set_Alternate_Function(GPIO_TypeDef * port, GPIO_Pin_t pin, GPIO_Alt_func_t altFunction);
 
 
-#endif	/* GPIO_H */
+#endif	/* DRIVERS_GPIO_H_ */
