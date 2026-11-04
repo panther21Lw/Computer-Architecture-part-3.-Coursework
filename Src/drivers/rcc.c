@@ -95,7 +95,7 @@ uint32_t RCC_Get_SysClk(void) {
 }
 
 // This function sets SYSCLK to 25 MHz.
-// Clock source for SYSCLK is HSE.
+// Clock source for SYSCLK is PLL.
 RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
 
 	// Getting current MCU Clock Frequency. There will be 0 if an error was occurred.
@@ -108,10 +108,14 @@ RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
 
 	// Waiting for HSI is ready (HSIRDY flag) or timeout exit if HSI failed
 	uint32_t timeout = time_ns_to_cycles(RCC_HSI_SU_MAX, frequency);
-	while((!(RCC->CR & 0x02UL)) && timeout--);
 
-	// Waiting time was expired. There are some problems with HSI.
-	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+	while(!(RCC->CR & 0x02UL)) {
+		if (timeout == 0) {
+			// Waiting time was expired. There are some problems with HSI.
+			return RCC_CLK_SET_FAIL;
+		}
+		timeout--;
+	}
 
 	// Switching SW to HSI
 	RCC->CFGR = (RCC->CFGR & ~(0x03UL)) | ((uint32_t)RCC_SYSCLK_SRC_HSI);
@@ -133,9 +137,15 @@ RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
 
 	// Check for HSE is ready
 	timeout = time_ns_to_cycles(RCC_HSE_SU_MAX, frequency);
-	while((!(RCC->CR & (1UL << 17U))) && timeout--); // Waiting HSERDY flag is set
 
-	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+	// Waiting HSERDY flag is set
+	while(!(RCC->CR & (1UL << 17U))) {
+		if (timeout == 0) {
+			//Waiting time was expired. There are some problems with HSE.
+			return RCC_CLK_SET_FAIL;
+		}
+		timeout--;
+	}
 
 	/* 4. Enabling POWER interface */
 	RCC->APB1ENR |= (1UL << 28U);	// Setting PWREN bit
@@ -167,9 +177,17 @@ RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
 
 	/* Waiting for PLL lock */
 	timeout = time_ns_to_cycles(RCC_PLL_SU_MAX, frequency);
-	while((!(RCC->CR & (1UL << 25U))) && timeout--);
 
-	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+	while(!(RCC->CR & (1UL << 25U))) {
+		if (timeout == 0) {
+			// Waiting time was expired. There are some problems with PLL.
+			return RCC_CLK_SET_FAIL;
+		}
+		timeout--;
+	}
+
+	// Waiting that new VOS value was applied by PWR controlled after PLL on
+	while(!(PWR->CSR & (1UL << 14U)));
 
 	// HSI is selected as SYSCLK source. No need to clean SW source bits
 	RCC->CFGR |= RCC_SYSCLK_SRC_PLL;
@@ -193,10 +211,13 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 
 		// Waiting for HSI is ready (HSIRDY flag) or timeout exit if HSI failed
 		uint32_t timeout = time_ns_to_cycles(RCC_HSI_SU_MAX, frequency);
-		while((!(RCC->CR & 0x02UL)) && timeout--);
-
-		// Waiting time was expired. There are some problems with HSI.
-		if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+		while(!(RCC->CR & 0x02UL)) {
+			if (timeout == 0) {
+				// Waiting time was expired. There are some problems with HSI.
+				return RCC_CLK_SET_FAIL;
+			}
+			timeout--;
+		}
 
 		// Switching SW to HSI
 		RCC->CFGR = (RCC->CFGR & ~(0x03UL)) | ((uint32_t)RCC_SYSCLK_SRC_HSI);
@@ -218,9 +239,15 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 
 		// Check for HSE is ready
 		timeout = time_ns_to_cycles(RCC_HSE_SU_MAX, frequency);
-		while((!(RCC->CR & (1UL << 17U))) && timeout--); // Waiting HSERDY flag is set
 
-		if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+		// Waiting HSERDY flag is set
+		while(!(RCC->CR & (1UL << 17U))) {
+			if (timeout == 0) {
+				// Waiting time was expired. There are some problems with HSE.
+				return RCC_CLK_SET_FAIL;
+			}
+			timeout--;
+		}
 
 		/* 4. Enabling POWER interface */
 		RCC->APB1ENR |= (1UL << 28U);	// Setting PWREN bit
@@ -253,7 +280,13 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 
 		/* Waiting for PLL lock */
 		timeout = time_ns_to_cycles(RCC_PLL_SU_MAX, frequency);
-		while((!(RCC->CR & (1UL << 25U))) && timeout--);
+		while(!(RCC->CR & (1UL << 25U))) {
+			if (timeout == 0) {
+				// Waiting time was expired. There are some problems with PLL.
+				return RCC_CLK_SET_FAIL;
+			}
+			timeout--;
+		}
 
 		if (timeout == 0) { return RCC_CLK_SET_FAIL; }
 
