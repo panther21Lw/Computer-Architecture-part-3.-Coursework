@@ -288,7 +288,8 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 			timeout--;
 		}
 
-		if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+		// Waiting that new VOS value was applied by PWR controlled after PLL on
+		while(!(PWR->CSR & (1UL << 14U)));
 
 		// HSI is selected as SYSCLK source. No need to clean SW source bits
 		RCC->CFGR |= RCC_SYSCLK_SRC_PLL;
