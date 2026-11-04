@@ -35,6 +35,9 @@ typedef enum {
 // This function sets the number of Flash Wait States
 void Flash_Set_Wait_States(FLASH_WS_t ws);
 
+// This function enables Prefetch Buffer
+void Flash_Prefetch_Enable(void);
+
 // This function enables Instruction and Data Caches
 void Flash_Enable_Caches(void);
 
@@ -43,8 +46,5 @@ void Flash_Instruction_Cache_Enable(void);
 
 // This function enables Data Cache
 void Flash_Data_Cache_Enable(void);
-
-// This function enables Prefetch Buffer
-void Flash_Prefetch_Enable(void);
 
 #endif /* DRIVERS_FLASH_H_ */
