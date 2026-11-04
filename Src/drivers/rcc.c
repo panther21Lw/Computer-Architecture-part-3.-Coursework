@@ -78,10 +78,19 @@ uint32_t RCC_Get_SysClk(void) {
 		uint32_t Pll_N = ((RCC->PLLCFGR >> 6UL) & 0x1FFUL);	// bits 14:6 in PLLCFGR is PLL_N factor
 		uint32_t PLL_P = ((RCC->PLLCFGR >> 16UL) & 0x03UL);	// bits 17:16 in PLLCFGR is PLL_P factor
 
-		return (pll_input_clock_freq / PLL_M * Pll_N / PLL_P);
+		/**
+		 * PLL_P bits have values:
+		 * 00: p = 2
+		 * 01: p = 4
+		 * 10: p = 6
+		 * 11: p = 8
+		 */
+		PLL_P = (PLL_P + 1U) << 1U;	// multiplication changed by left shift by 1
+
+		return (uint32_t)((uint64_t)pll_input_clock_freq * Pll_N / ((uint64_t)PLL_M * PLL_P));
 
 	default:	// if switch status not 0x00 to 0x02 there is some error. Return 0
-		return 0;
+		return 0U;
 	}
 }
 
