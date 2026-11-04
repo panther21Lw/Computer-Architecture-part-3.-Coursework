@@ -158,12 +158,12 @@ RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
 	// Cleaning M, N and P fields in PLL configuration register
 	/**
 	 * Setting PLL factors:
-	 * M = 25;
-	 * N = 50;
-	 * P =  2;
+	 * M =  25;
+	 * N = 200;
+	 * P =   8;
 	 */
 	RCC->PLLCFGR = (RCC->PLLCFGR & ~(0x03FUL) & ~(0x1FFUL << 6U) & ~(0x03UL << 16U))
-			| (25UL) | (50UL << 6U) | (2UL << 16U);
+			| (25UL) | (200UL << 6U) | (3UL << 16U);
 
 	RCC->PLLCFGR |= (1UL << 22U);	// Setting the PLLSRC bit: HSE is clock source for PLL
 
@@ -265,7 +265,7 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 		 * P =  2;
 		 */
 		RCC->PLLCFGR = (RCC->PLLCFGR & ~(0x03FUL) & ~(0x1FFUL << 6U) & ~(0x03UL << 16U))
-				| (25UL) | (200UL << 6U) | (2UL << 16U);
+				| (25UL) | (200UL << 6U) | (0UL << 16U);
 
 		RCC->PLLCFGR |= (1UL << 22U);	// Setting the PLLSRC bit: HSE is clock source for PLL
 
@@ -276,7 +276,7 @@ RCC_CLK_SET_t SYSCLK_HSE_100MHz(void) {
 		RCC->CR |= (1UL << 24U);	// Setting the PLLON bit
 
 		/* 8. Flash latency */
-		Flash_Set_Wait_States(FLASH_WS_3);	// Target frequency (25 MHz) less than 30 MHz. WS not needed.
+		Flash_Set_Wait_States(FLASH_WS_3);	// 3 Wait States for 100 MHz
 
 		/* Waiting for PLL lock */
 		timeout = time_ns_to_cycles(RCC_PLL_SU_MAX, frequency);
