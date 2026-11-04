@@ -6,10 +6,46 @@
  */
 
 #include "drivers/rcc.h"
+#include "drivers/pwr.h"
+#include "drivers/flash.h"
 
 #define RCC_HSI_CLOCK 	(16000000UL)	/* HSI frequency 16 MHz. Source: Table 39, p. 87, DS	*/
 #define RCC_HSE_CLOCK	(25000000UL)	/* HSE frequency 25 MHz. On-board Crystal				*/
 
+#define RCC_HSE_T_SU_NS	(2*1000000UL)	/* HSE typical startup time (2 ms in ns). Source: Table 37, p. 85, DS */
+#define RCC_HSI_T_SU_NS (4*	  1000UL)	/* HSI maximum startup time (4 us in ns). Source: Table 39, p. 87, DS */
+#define RCC_PLL_LOCK_NS	(300* 1000UL)	/* PLL maximum lock time (300 us in ns).  Source: Table 41, p. 89, DS */
+
+#define RCC_HSE_SU_MAX	(10 * RCC_HSE_T_SU_NS)	/* maximum timeout for setup HSERDY	*/
+#define RCC_HSI_SU_MAX	(2  * RCC_HSI_T_SU_NS)	/* maximum timeout for setup HSIRDY	*/
+#define RCC_PLL_SU_MAX	(2  * RCC_PLL_LOCK_NS)	/* maximum timeout for setup PLLRDY	*/
+
+
+// This functions calculates number on CPU cycles to spend to achieve time, provided in ns
+static inline uint32_t time_ns_to_cycles(uint32_t time_ns, uint32_t frequency)
+{
+	/**
+	 * The formula is:
+	 * 1 cycle  = N (seconds) <==> 1/frequency
+	 * x cycles = M (seconds)
+	 *
+	 * Use proportion to solve for x:
+	 * x = (M (seconds) * 1 cycle / N (seconds))
+	 *
+	 * Replacing N (seconds) to 1/frequency:
+	 * x = (M (seconds) * 1 cycle * frequency) / 1 (second)
+	 * So the answer in cycles.
+	 *
+	 * M provided in ns (nano seconds), so equation have to be divided by 1_000_000_000 (billion)
+	 *
+	 * The final formula is:
+	 *
+	 * x = (M (nanoseconds) * frequency) / 1000000000
+	 */
+	// + 999999999ULL used to avoid losing fraction part during integer division
+	return (uint32_t)(((uint64_t)time_ns * frequency + 999999999ULL) / 1000000000ULL);
+
+}
 
 // This function returns SYSCLK on the System Clock Switch
 // This function may RETURN 0 in case of internal error
@@ -51,7 +87,89 @@ uint32_t RCC_Get_SysClk(void) {
 
 // This function sets SYSCLK to 25 MHz.
 // Clock source for SYSCLK is HSE.
-RCC_CLK_SET_t SYSCLK_HSE_25MHz(void);
+RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {
+
+	// Getting current MCU Clock Frequency. There will be 0 if an error was occurred.
+	uint32_t frequency = RCC_Get_SysClk();
+
+	if (frequency == 0) { return RCC_CLK_SET_FAIL; }
+
+	/* 1. Switching to HSI */
+	RCC->CR |= (1UL);	// setting HSION
+
+	// Waiting for HSI is ready (HSIRDY flag) or timeout exit if HSI failed
+	uint32_t timeout = time_ns_to_cycles(RCC_HSI_SU_MAX, frequency);
+	while((!(RCC->CR & 0x02UL)) && timeout--);
+
+	// Waiting time was expired. There are some problems with HSI.
+	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+
+	// Switching SW to HSI
+	RCC->CFGR = (RCC->CFGR & ~(0x03UL)) | ((uint32_t)RCC_SYSCLK_SRC_HSI);
+
+	// Waiting until HSI is used as system clock
+	while(RCC->CFGR & 0x0CUL);
+
+	/* 2. Turning off the PLL */
+	RCC->CR &= ~(1UL << 24U);	// Clearing PLLON bit
+	/**
+	 * It is possible to execute some lines of code instead of waiting for PLL off.
+	 */
+
+	/* 3. Turning on the HSE */
+	RCC->CR |= (1UL << 16U);	// setting HSEON bit
+
+	// Check for PLL if off
+	while(RCC->CR & (1UL << 25U));	// Waiting for PLLRDY bit reset
+
+	// Check for HSE is ready
+	timeout = time_ns_to_cycles(RCC_HSE_SU_MAX, frequency);
+	while((!(RCC->CR & (1UL << 17U))) && timeout--); // Waiting HSERDY flag is set
+
+	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+
+	/* 4. Enabling POWER interface */
+	RCC->APB1ENR |= (1UL << 28U);	// Setting PWREN bit
+	(void)RCC->APB1ENR;		// Making sure that the POWER interface is enabled
+
+	/* 5. Apply VOS */
+	PWR_Set_Vos(VOS_SCALE_MODE_3);
+
+	/* 6. Configuring the PLL */
+	// Cleaning M, N and P fields in PLL configuration register
+	/**
+	 * Setting PLL factors:
+	 * M = 25;
+	 * N = 50;
+	 * P =  2;
+	 */
+	RCC->PLLCFGR = (RCC->PLLCFGR & ~(0x03FUL) & ~(0x1FFUL << 6U) & ~(0x03UL << 16U))
+			| (25UL) | (50UL << 6U) | (2UL << 16U);
+
+	RCC->PLLCFGR |= (1UL << 22U);	// Setting the PLLSRC bit: HSE is clock source for PLL
+
+	/* There is no need to set APB1 prescalers because target SYSCLK (25 MHz) if less than 50 MHz max for APB1. */
+
+	/* 7. Turning on the PLL */
+	RCC->CR |= (1UL << 24U);	// Setting the PLLON bit
+
+	/* 8. Flash latency */
+	Flash_Set_Wait_States(FLASH_WS_0);	// Target frequency (25 MHz) less than 30 MHz. WS not needed.
+
+	/* Waiting for PLL lock */
+	timeout = time_ns_to_cycles(RCC_PLL_SU_MAX, frequency);
+	while((!(RCC->CR & (1UL << 25U))) && timeout--);
+
+	if (timeout == 0) { return RCC_CLK_SET_FAIL; }
+
+	// HSI is selected as SYSCLK source. No need to clean SW source bits
+	RCC->CFGR |= RCC_SYSCLK_SRC_PLL;
+
+	// Reading SWS bits to make sure SYSCLK source is taken into account
+	while(((RCC->CFGR >> 2U) & 0x03UL) != RCC_SYSCLK_SRC_PLL);
+
+	return RCC_CLK_SET_SUCCESS;
+}
 
 // This function sets SYSCLK to 100 MHz.
 // Clock source for SYSCLK is HSE.
