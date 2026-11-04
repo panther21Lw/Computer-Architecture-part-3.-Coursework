@@ -60,6 +60,7 @@ uint32_t RCC_Get_SysClk(void) {
 		return RCC_HSE_CLOCK;	// returning the HSSE clock frequency value
 
 	case 0x02UL:	// PLL is selected as the SYSCLK clock source
+	{
 		/**
 		 * The frequency is generated with PLL (PLLCLK) derives from:
 		 * 1. VCO_in  = PLL_SOURCE / PLL_M;
@@ -88,6 +89,7 @@ uint32_t RCC_Get_SysClk(void) {
 		PLL_P = (PLL_P + 1U) << 1U;	// multiplication changed by left shift by 1
 
 		return (uint32_t)((uint64_t)pll_input_clock_freq * Pll_N / ((uint64_t)PLL_M * PLL_P));
+	}
 
 	default:	// if switch status not 0x00 to 0x02 there is some error. Return 0
 		return 0U;
