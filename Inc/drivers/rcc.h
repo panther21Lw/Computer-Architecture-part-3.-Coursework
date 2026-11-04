@@ -20,20 +20,28 @@ typedef struct {
 	volatile uint32_t CIR;				/* RCC clock interrupt register					*/
 	volatile uint32_t AHB1RSTR;			/* RCC AHB1 peripheral reset register 			*/
 	volatile uint32_t AHB2RSTR;			/* RCC AHB2 peripheral reset register			*/
+			uint32_t RESERVED1[2];		/* RESERVED 0x18-0x1C	*/
 	volatile uint32_t APB1RSTR;			/* RCC APB1 peripheral reset register			*/
 	volatile uint32_t APB2RSTR;			/* RCC APB2 peripheral reset register			*/
+			uint32_t RESERVED2[2];		/* RESERVED 0x28-0x2C		*/
 	volatile uint32_t AHB1ENR;			/* RCC AHB1 peripheral clock enable register 	*/
 	volatile uint32_t AHB2ENR;			/* RCC AHB2 peripheral clock enable register	*/
+			uint32_t RESERVED3[2];		/* RESERVED 0x38-0x3C		*/
 	volatile uint32_t APB1ENR;			/* RCC APB1 peripheral clock enable register	*/
 	volatile uint32_t APB2ENR;			/* RCC APB2 peripheral clock enable register	*/
+			uint32_t RESERVED4[2];		/* RESERVED 0x48-0x4C		*/
 	volatile uint32_t AHB1LPENR;		/* RCC AHB1 peripheral clock enable in low power mode register  */
 	volatile uint32_t AHB2LPENR;		/* RCC AHB2 peripheral clock enable in low power mode register  */
+			uint32_t RESERVED5[2];		/* RESERVED 0x58-0x5C		*/
 	volatile uint32_t APB1LPENR;		/* RCC APB1 peripheral clock enable in low power mode register  */
 	volatile uint32_t APB2LPENR;		/* RCC APB2 peripheral clock enabled in low power mode register */
+			uint32_t RESERVED6[2];		/* RESERVED	0x68-0x6C		*/
 	volatile uint32_t BDCR;				/* RCC Backup domain control register			*/
 	volatile uint32_t CSR;				/* RCC clock control & status register			*/
+			uint32_t RESERVED7[2];		/* RESERVED 0x78-0x7C		*/
 	volatile uint32_t SSCGR;			/* RCC spread spectrum clock generation register */
 	volatile uint32_t PLLI2SCFGR;		/* RCC PLLI2S configuration register			*/
+			uint32_t RESERVED8[1];		/* RESERVED 0x88			*/
 	volatile uint32_t DCKCFGR;			/* Dedicated Clocks Configuration Register		*/
 } RCC_TypeDef;
 
