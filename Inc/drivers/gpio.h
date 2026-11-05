@@ -10,6 +10,8 @@
 
 #include <stdint.h>		/* Header for standard integer types (like uint32_t) */
 
+#include "memory_map.h"
+
 // GPIO Registers
 typedef struct {
 	volatile uint32_t MODER;		/* GPIO port mode register */
@@ -23,6 +25,9 @@ typedef struct {
 	volatile uint32_t AFRL;			/* GPIO alternate function low register */
 	volatile uint32_t AFRH;			/* GPIO alternate function high register */
 } GPIO_TypeDef;
+
+#define 	GPIOA		((GPIO_TypeDef *) GPIOA_BASE)
+#define		GPIOB		((GPIO_TypeDef *) GPIOB_BASE)
 
 typedef enum {
 	GPIO_PIN_0 =  0U,				/* Pin 0 */
