@@ -121,4 +121,26 @@ static inline void RCC_GPIOB_Clock_EN(void)
 	RCC->AHB1ENR |= (1UL << 1UL);	// Setting the GPIOBEN bit
 }
 
+// This function enables clock to CPIOC
+static inline void RCC_GPIOC_Clock_EN(void)
+{
+	RCC->AHB1ENR |= (1UL << 2UL);	// Setting the GPIOCEN bit
+}
+
+// This function configures MCO1 (pin PA8)
+static inline void RCC_MCO1_Config(RCC_MCO1_t src, RCC_MCO_PRE_t pre)
+{
+	RCC->CFGR &= ~((0x03UL << 21U) | (0x07UL << 24U));	// Clearing previous prescaler and source
+	// Setting MCO1 PRE and MCO1 bits
+	RCC->CFGR |= (((uint32_t)pre & 0x07UL) << 24U) | (((uint32_t)src & 0x03UL) << 21U);
+}
+
+// This function configures MCO2 (pin PC9)
+static inline void RCC_MCO2_Config(RCC_MCO2_t src, RCC_MCO_PRE_t pre)
+{
+	RCC->CFGR &= ~((0x03UL << 30U) | (0x07UL << 27U));	// Clearing previous source and prescaler
+	// Setting MCO2 PRE and MCO2 bits
+	RCC->CFGR |= (((uint32_t)pre & 0x07UL) << 27U) | (((uint32_t)src & 0x03UL) << 30U);
+}
+
 #endif /* DRIVERS_RCC_H_ */
