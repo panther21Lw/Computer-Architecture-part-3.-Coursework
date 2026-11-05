@@ -28,6 +28,7 @@ typedef struct {
 
 #define 	GPIOA		((GPIO_TypeDef *) GPIOA_BASE)
 #define		GPIOB		((GPIO_TypeDef *) GPIOB_BASE)
+#define		GPIOC		((GPIO_TypeDef *) GPIOC_BASE)
 
 typedef enum {
 	GPIO_PIN_0 =  0U,				/* Pin 0 */
