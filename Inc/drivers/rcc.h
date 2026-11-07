@@ -90,10 +90,23 @@ typedef enum {
 	RCC_CLK_SET_FAIL	= 0x01UL		/* Setting the new clock frequency 	   FAILED	  */
 } RCC_CLK_SET_t;
 
+typedef enum {
+	RCC_APB1 = 0x00UL,					/* Alias for APB low-speed (APB1)			*/
+	RCC_APB2 = 0x01UL,					/* Alias for APB high-speed (APB2)			*/
+	RCC_APBx_NUM = 0x02UL				/* Number of APB's in the system			*/
+} RCC_APBx_t;
 
 // This function returns SYSCLK on the System Clock Switch
 // This function may RETURN 0 in case of internal error
 uint32_t RCC_Get_SysClk(void);
+
+// This function returns HCLK the clock of the AHB
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_AHBClk(void);
+
+// This function returns APB1 or APB2 clock frequency
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_APBxClk(RCC_APBx_t apbx);
 
 // This function sets SYSCLK to 25 MHz.
 // Clock source for SYSCLK is HSE.
