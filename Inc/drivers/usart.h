@@ -51,7 +51,7 @@ typedef enum {
 
 // This function initializes USART2
 // Function activates Transmitter and Receiver.
-// Function enables interrupts for events: RXNE, PE.
+// Function enables interrupts for events: RXNE.
 void USART2_Init(uint32_t baudRate, USART_OSAMP_t oversampling,
 		USART_PARITY_t parity, USART_WORD_t wordLength, USART_STOP_BIT_t nStopBits);
 

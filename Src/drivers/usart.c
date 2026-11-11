@@ -12,7 +12,7 @@
 
 // This function initializes USART2
 // Function activates Transmitter and Receiver.
-// Function enables interrupts for events: RXNE, PE.
+// Function enables interrupts for events: RXNE.
 void USART2_Init(uint32_t baudRate, USART_OSAMP_t oversampling,
 		USART_PARITY_t parity, USART_WORD_t wordLength, USART_STOP_BIT_t nStopBits)
 {
@@ -98,7 +98,6 @@ void USART2_Init(uint32_t baudRate, USART_OSAMP_t oversampling,
 	}
 
 	// Enabling interrupts
-	USART2->CR1 |= (1UL << 8U); // interrupt on Parity error
 	USART2->CR1 |= (1UL << 5U);	// interrupt on Receiver data register not empty
 
 	// Enabling the Transmitter
