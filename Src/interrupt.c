@@ -21,7 +21,7 @@
  * Function returns status of both message queues: normal and prioritized.
  * Note: param. (char *address) is an OUTPUT parameter.
  */
-MESSAGE_Q_STATUS_t next_message(const char *);
+MESSAGE_Q_STATUS_t next_message(const char **);
 
 
 //uint32_t parity_error = TRANSMISSION_OK;
@@ -177,7 +177,7 @@ MESSAGE_Q_STATUS_t send_message(const char* message, MESSAGE_PRIOR_t priority)
 
 	// Starting the transmission if not started already.
 	if (transmitter_state == TRANSMITTER_IDLE) {
-		(void)next_message(transmitter_message_start);	// ignoring the return because any queue can not be empty.
+		(void)next_message(&transmitter_message_start);	// ignoring the return because any queue can not be empty.
 		transmitter_index = 0U;	// reseting the index for transmitter.
 		transmitter_state = TRANSMITTER_TRANSMIT;	// select current state of USART-TRANSMITTER state machine
 
@@ -193,7 +193,7 @@ MESSAGE_Q_STATUS_t send_message(const char* message, MESSAGE_PRIOR_t priority)
  * Function returns status of both message queues: normal and prioritized.
  * Note: param. (char *address) is an OUTPUT parameter.
  */
-MESSAGE_Q_STATUS_t next_message(const char *address) {
+MESSAGE_Q_STATUS_t next_message(const char **address) {
 
 	struct message_q *message_qp = &prior_q;	// first check the prioritized queue.
 
@@ -206,7 +206,7 @@ MESSAGE_Q_STATUS_t next_message(const char *address) {
 	}
 
 	// returning the address of a next message
-	address = message_qp->messages[message_qp->head];
+	*address = message_qp->messages[message_qp->head];
 
 	message_qp->head++;	// increment of the index of a next message that will be returned
 
@@ -244,7 +244,7 @@ void USART2_IRQHandler(void) {
 	// CHECK NODE
 	if (transmitter_state == TRANSMITTER_CHECK) {
 		// obtaining the state of messages queues and address of the message to send
-		MESSAGE_Q_STATUS_t status = next_message(transmitter_message_start);
+		MESSAGE_Q_STATUS_t status = next_message(&transmitter_message_start);
 
 		if (status == MESSAGE_RETURN_SUCCESS) {
 			// If a message for transmitting is available
