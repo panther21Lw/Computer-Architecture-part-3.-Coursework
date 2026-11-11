@@ -13,18 +13,22 @@
  */
 #define COMMAND_LEN_MAX		(20U + 1U)	// 20 for a command characters and 1 for '\0' to mark the end of a string.
 
-typedef enum {
-	TRANSMISSION_OK			= 0x00UL,		/* Transmission completed successfully	*/
-	TRANSMISSION_ERROR		= 0x01UL,		/* Error occurred during transmission	*/
-	TRANSMISSION_BUSSY		= 0x02UL,		/* Data transfer in progress			*/
-	TRANSMISSION_FINISHED	= 0x03UL		/* Data transfer finished				*/
-} TRANSMISSION_STATUS_t;
+//typedef enum {
+//	TRANSMISSION_OK			= 0x00UL,		/* Transmission completed successfully	*/
+//	TRANSMISSION_ERROR		= 0x01UL,		/* Error occurred during transmission	*/
+//	TRANSMISSION_BUSSY		= 0x02UL,		/* Data transfer in progress			*/
+//	TRANSMISSION_FINISHED	= 0x03UL		/* Data transfer finished				*/
+//} TRANSMISSION_STATUS_t;
 
 typedef enum {
 	BUFFER_NOT_READY		= 0x00UL,		/* No buffer is ready							*/
 	//BUFFER_1_READY			= 0x01UL,		/* Command in Buffer #1 is ready for processing	*/
 	//BUFFER_2_READY			= 0x02UL		/* Command in Buffer #2 is ready for processing	*/
-	BUFFER_READY			= 0x01UL		/* Buffer can be processed by the main state machine */
+	BUFFER_READY			= 0x01UL,		/* Buffer can be processed by the main state machine */
+	/* Buffer can be processed by the main state machine
+	 * but noise was detected during reception of corresponding buffer
+	 */
+	BUFFER_READY_NOISE		= 0x02UL
 } BUFFER_STATUS_t;
 
 typedef enum {
@@ -46,10 +50,10 @@ typedef enum {
  * -- statuses of corresponding buffers;
  */
 struct command_buffers{
-	char *command_buffer1;		// pointer to buffer #1 contains command
-	char *command_buffer2;		// pointer to buffer #2 contains command
-	uint32_t buffer_1_status;	// status  of buffer #1
-	uint32_t buffer_2_status;	// status  of buffer #2
+	char *command_buffer1;			// pointer to buffer #1 contains command
+	char *command_buffer2;			// pointer to buffer #2 contains command
+	uint32_t buffer_1_status;		// status  of buffer #1
+	uint32_t buffer_2_status;		// status  of buffer #2
 };
 
 // This function returns pointers to command buffers and their statuses
