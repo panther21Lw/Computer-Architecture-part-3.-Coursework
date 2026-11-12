@@ -23,14 +23,6 @@
  */
 MESSAGE_Q_STATUS_t next_message(const char **);
 
-
-//uint32_t parity_error = TRANSMISSION_OK;
-//uint32_t overrun_error = TRANSMISSION_OK;
-//uint32_t framing_error = TRANSMISSION_OK;
-//uint32_t noise_error = TRANSMISSION_OK;
-
-//uint32_t transmission_complete = TRANSMISSION_FINISHED;
-
 /**
  * This enumerate defines possible states of state machine for USART-TRANSMITTER.
  * This states are:
@@ -70,6 +62,15 @@ static struct command_buffers buffers = {
 const struct command_buffers* get_buffers(void) {
 	// return the pointer to the structure
 	return &buffers;
+}
+
+// This function sets corresponding buffer state as not ready.
+void set_buffer_not_ready(BUFFER_NUM_t buf_num) {
+	if (buf_num == BUFFER_1) {
+		buffers.buffer_1_status = BUFFER_NOT_READY;
+	} else if (buf_num == BUFFER_2) {
+		buffers.buffer_2_status = BUFFER_NOT_READY;
+	}
 }
 
 /**
@@ -340,6 +341,7 @@ void USART2_IRQHandler(void) {
 				command_noise_flag ? (buffers.buffer_1_status = BUFFER_READY_NOISE) : (buffers.buffer_1_status = BUFFER_READY);
 				receiver_active_command_buffer = command_buffer2;	// changing buffer for filling to buffer #2
 				receiver_active_command_buffer_num = 2UL;			// changing number of active buffer to #2
+				buffers.buffer_2_status = BUFFER_NOT_READY;			// set status for the buffer #2 as NOT READY
 
 			} else if (receiver_active_command_buffer_num == 2UL) {
 				/* if buffer #2 was selected to filling		*/
@@ -347,6 +349,7 @@ void USART2_IRQHandler(void) {
 				command_noise_flag ? (buffers.buffer_2_status = BUFFER_READY_NOISE) : (buffers.buffer_2_status = BUFFER_READY);
 				receiver_active_command_buffer = command_buffer1;	// changing buffer for filling to buffer #1
 				receiver_active_command_buffer_num = 1UL;			// changing number of active buffer to #1
+				buffers.buffer_1_status = BUFFER_NOT_READY;			// set status for the buffer #1 as NOT READY
 			}
 			receiver_command_buffer_index = 0UL;	// resetting index to receive new command from begin
 			command_noise_flag = 0UL;	// resetting command noise flag for next command

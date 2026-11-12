@@ -24,6 +24,11 @@ typedef enum {
 } BUFFER_STATUS_t;
 
 typedef enum {
+	BUFFER_1				= 0x01UL,		/* Buffer #1												*/
+	BUFFER_2				= 0x02UL		/* Buffer #2												*/
+} BUFFER_NUM_t;
+
+typedef enum {
 	MESSAGE_ADD_SUCCESS		= 0x00UL,		/* Message has been added to the corresponding queue 		*/
 	MESSAGE_QUEUE_OVERFLOW 	= 0x01UL,		/* Message was not added to the queue: the queue is full	*/
 	MESSAGE_WRONG_Q			= 0x02UL,		/* Mentioned message queue does not exist					*/
@@ -50,6 +55,9 @@ struct command_buffers{
 
 // This function returns pointers to command buffers and their statuses
 const struct command_buffers* get_buffers(void);
+
+// This function sets corresponding buffer state as not ready.
+void set_buffer_not_ready(BUFFER_NUM_t buf_num);
 
 // This function adds the message to the corresponding queue
 MESSAGE_Q_STATUS_t send_message(const char* message, MESSAGE_PRIOR_t priority);
