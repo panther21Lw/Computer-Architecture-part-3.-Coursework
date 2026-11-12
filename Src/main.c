@@ -176,16 +176,20 @@ int main(void)
 			if (buffers->buffer_1_status == BUFFER_READY) {
 				command_buffer = buffers->command_buffer1;
 				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_1);
 			} else if (buffers->buffer_1_status == BUFFER_READY_NOISE) {
 				command_buffer = buffers->command_buffer1;
 				noise_detected_flag = 1UL;
 				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_1);
 			} else if (buffers->buffer_2_status == BUFFER_READY) {
 				command_buffer = buffers->command_buffer2;
 				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_2);
 			} else if (buffers->buffer_2_status == BUFFER_READY_NOISE) {
 				command_buffer = buffers->command_buffer2;
 				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_2);
 			}
 			break;
 
