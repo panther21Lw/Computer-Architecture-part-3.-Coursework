@@ -84,7 +84,7 @@ void set_buffer_not_ready(BUFFER_NUM_t buf_num) {
 typedef enum {
 	RECEIVER_COMMAND_RECEIVING	= 0x00UL,	/* Receiver at COMMAND_RECEIVING state	*/
 	RECEIVER_COMMAND_READY		= 0x01UL,	/* Receiver at COMMAND_READY	 state	*/
-	RECEIVER_ERROR_WARNIGN		= 0x02UL,	/* Receiver at ERROR_WARNING	 state	*/
+	RECEIVER_ERROR_WARNING		= 0x02UL,	/* Receiver at ERROR_WARNING	 state	*/
 	RECEIVER_WAIT_FOR_ACK		= 0x03UL	/* Receiver at WAIT_FOR_ACK		 state	*/
 } RECEIVER_STATE_t;
 
@@ -281,7 +281,7 @@ void USART2_IRQHandler(void) {
 				/* command too long error detection	*/
 				if ((receiver_command_buffer_index == LAST_RECEIVER_INDEX) &&
 					received_symbol != '\n') {	// if '\n' (command terminator) to detected at maximum expected place
-					receiver_state = RECEIVER_ERROR_WARNIGN;	// change the state to handle the error
+					receiver_state = RECEIVER_ERROR_WARNING;	// change the state to handle the error
 					command_too_long_flag = 1UL;				// setting the command too long flag
 				} else if (received_symbol == '\n') { /* command terminator ('\n') detection	*/
 					receiver_active_command_buffer[receiver_command_buffer_index] = '\0';	// inserting string terminator
@@ -299,13 +299,13 @@ void USART2_IRQHandler(void) {
 				}
 			} else {
 				// If critical errors (PE, ORE, FE) detected during character reception
-				receiver_state = RECEIVER_ERROR_WARNIGN;	// changing state of receiver state machine to warn the user
+				receiver_state = RECEIVER_ERROR_WARNING;	// changing state of receiver state machine to warn the user
 				command_crit_err_flag = 1UL;	// set the critical error flag.
 			}
 		}
 
 		// ERROR WARNING NODE
-		if (receiver_state == RECEIVER_ERROR_WARNIGN) {
+		if (receiver_state == RECEIVER_ERROR_WARNING) {
 			receiver_command_buffer_index = 0UL;		// resetting command buffer index: received command is invalid.
 			send_message(error_init_mes, MESSAGE_ERROR);	// Informing about error
 

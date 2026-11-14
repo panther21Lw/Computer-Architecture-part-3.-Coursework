@@ -92,9 +92,7 @@ static void boardInit(void) {
 typedef enum {
 	WAIT_COMMAND		= 0x00UL,	/* Waiting for command state					*/
 	PROCESS_COMMAND		= 0x01UL,	/* Processing a command state					*/
-//	UPDATE_LEDS			= 0x02UL,	/* Updating state of the LEDs state				*/
-//	PREPARE_WARNING		= 0x03UL,	/* Preparing the feedback for the user state	*/
-	FEEDBACK			= 0x04UL	/* Sending message to the user state			*/
+	FEEDBACK			= 0x02UL	/* Sending message to the user state			*/
 } MACHINE_STATE_t;
 
 int main(void)
