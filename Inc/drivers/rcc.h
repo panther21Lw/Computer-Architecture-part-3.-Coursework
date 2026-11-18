@@ -90,10 +90,23 @@ typedef enum {
 	RCC_CLK_SET_FAIL	= 0x01UL		/* Setting the new clock frequency 	   FAILED	  */
 } RCC_CLK_SET_t;
 
+typedef enum {
+	RCC_APB1 = 0x00UL,					/* Alias for APB low-speed (APB1)			*/
+	RCC_APB2 = 0x01UL,					/* Alias for APB high-speed (APB2)			*/
+	RCC_APBx_NUM = 0x02UL				/* Number of APB's in the system			*/
+} RCC_APBx_t;
 
 // This function returns SYSCLK on the System Clock Switch
 // This function may RETURN 0 in case of internal error
 uint32_t RCC_Get_SysClk(void);
+
+// This function returns HCLK the clock of the AHB
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_AHBClk(void);
+
+// This function returns APB1 or APB2 clock frequency
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_APBxClk(RCC_APBx_t apbx);
 
 // This function sets SYSCLK to 25 MHz.
 // Clock source for SYSCLK is HSE.
@@ -119,6 +132,28 @@ static inline void RCC_GPIOA_Clock_EN(void)
 static inline void RCC_GPIOB_Clock_EN(void)
 {
 	RCC->AHB1ENR |= (1UL << 1UL);	// Setting the GPIOBEN bit
+}
+
+// This function enables clock to CPIOC
+static inline void RCC_GPIOC_Clock_EN(void)
+{
+	RCC->AHB1ENR |= (1UL << 2UL);	// Setting the GPIOCEN bit
+}
+
+// This function configures MCO1 (pin PA8)
+static inline void RCC_MCO1_Config(RCC_MCO1_t src, RCC_MCO_PRE_t pre)
+{
+	RCC->CFGR &= ~((0x03UL << 21U) | (0x07UL << 24U));	// Clearing previous prescaler and source
+	// Setting MCO1 PRE and MCO1 bits
+	RCC->CFGR |= (((uint32_t)pre & 0x07UL) << 24U) | (((uint32_t)src & 0x03UL) << 21U);
+}
+
+// This function configures MCO2 (pin PC9)
+static inline void RCC_MCO2_Config(RCC_MCO2_t src, RCC_MCO_PRE_t pre)
+{
+	RCC->CFGR &= ~((0x03UL << 30U) | (0x07UL << 27U));	// Clearing previous source and prescaler
+	// Setting MCO2 PRE and MCO2 bits
+	RCC->CFGR |= (((uint32_t)pre & 0x07UL) << 27U) | (((uint32_t)src & 0x03UL) << 30U);
 }
 
 #endif /* DRIVERS_RCC_H_ */

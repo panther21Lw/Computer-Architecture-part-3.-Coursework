@@ -96,6 +96,87 @@ uint32_t RCC_Get_SysClk(void) {
 	}
 }
 
+// This function returns HCLK the clock of the AHB
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_AHBClk(void) {
+
+	uint32_t sysclk = RCC_Get_SysClk();		// Clock at System clock switch
+
+	// There are some errors in RCC_Get_SysClk() function. Exiting...
+	if (sysclk == 0U) {
+		return 0U;
+	}
+
+	uint32_t ahbPre = (RCC->CFGR >> 4U) & 0x0FUL;	// Getting AHB prescaler bit field
+
+	// Calculation of the actual prescaler value
+
+	if (ahbPre < 8U) {	// AHB prescaler values from 0000 to 0111 relate to system clock not divided
+		return sysclk;	// AHB prescaler is 1, so HCLK equals to SYSCLK
+	}
+
+	switch (ahbPre) {
+	case 8U:	ahbPre = 2U;	break;
+	case 9U:	ahbPre = 4U;	break;
+	case 10U:	ahbPre = 8U;	break;
+	case 11U:	ahbPre = 16U;	break;
+	case 12U:	ahbPre = 64U;	break;
+	case 13U:	ahbPre = 128U;	break;
+	case 14U:	ahbPre = 256U;	break;
+	case 15U:	ahbPre = 512U;	break;
+		// In case of some error
+	default: return 0U;
+	}
+
+
+	return (uint32_t)(sysclk / ahbPre);
+}
+
+// This function returns APB1 or APB2 clock frequency
+// This function may RETURN 0 in case of internal error
+uint32_t RCC_Get_APBxClk(RCC_APBx_t apbx) {
+
+	// If incorrect parameter
+	if (apbx >= RCC_APBx_NUM) {
+		return 0U;
+	}
+	uint32_t ahbClk = RCC_Get_AHBClk();
+
+	if (ahbClk == 0U) {
+		// In case of error during obtaining the HCLK
+		return 0U;
+	}
+
+	uint32_t apbxPre;
+
+	if (apbx == RCC_APB2) {
+		// Obtain the prescaler for the APB2
+		apbxPre = RCC->CFGR >> 13U;
+	} else {
+		// Obtain the prescaler for the APB1
+		apbxPre = RCC->CFGR >> 10U;
+	}
+
+	// Obtain prescaler bit field
+	apbxPre &= 0x07UL;
+
+	// Values from 0 to 3 (000...011) mean the prescaler is 1
+	if (apbxPre < 4U) {
+		return ahbClk;	// ABPx prescaler == 1, so APBx clock equals to HCLK
+	}
+
+	/**
+	 * Calculation of actual prescaler value with formula:
+	 * 100: AHB clock divided by 2
+	 * 101: AHB clock divided by 4
+	 * 110: AHB clock divided by 8
+	 * 111: AHB clock divided by 16
+	 */
+	apbxPre = (1UL << (apbxPre - 3U));
+
+	return (uint32_t)(ahbClk / apbxPre);
+}
+
 // This function sets SYSCLK to 25 MHz.
 // Clock source for SYSCLK is PLL.
 RCC_CLK_SET_t SYSCLK_HSE_25MHz(void) {

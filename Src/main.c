@@ -17,13 +17,247 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
-#if !defined(__SOFT_FP__) && defined(__ARM_FP)
-  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
-#endif
+#include "drivers/fpu.h"
+
+//#if !defined(__SOFT_FP__) && defined(__ARM_FP)
+//  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
+//#endif
+
+
+
+#include "drivers/flash.h"
+#include "drivers/gpio.h"
+#include "drivers/rcc.h"
+#include "drivers/nvic.h"
+#include "drivers/usart.h"
+#include "interrupt.h"
+
+
+#define LED_PORT		(GPIOB)
+#define LED_PIN_RED		(GPIO_PIN_12)
+#define LED_PIN_YELLOW	(GPIO_PIN_13)
+#define LED_PIN_GREEN	(GPIO_PIN_14)
+#define LED_PIN_BLUE	(GPIO_PIN_15)
+
+/**
+ * This function performs the board initialization procedure.
+ */
+static void boardInit(void) {
+
+	Flash_Prefetch_Enable();	// enable Prefetch buffer
+	Flash_Enable_Caches();		// enable Instruction and Data caches
+
+	RCC_GPIOA_Clock_EN();		// enable clock for GPIO port A
+	RCC_GPIOB_Clock_EN();		// enable clock for GPIO port B
+
+	SYSCLK_HSE_100MHz();		// set SYSCLK at 100 MHz
+
+	// Configure the USART2
+	disable_irq();	// disable maskable interrupts
+	USART2_Init(115200UL, USART_OSAMP_16, USART_PARITY_EVEN, USART_WORD_9, USART_STOP_BIT_1);
+	NVIC_SetPriority(USART2_IRQn, INTRPT_PRIOR_0);	// set the highest priority for USART2 interrupts
+	NVIC_EnableIRQ(USART2_IRQn);	// enabling interrupts by USART2
+	enable_irq();	// enabling maskable interrupts
+
+
+	// USART2 TX PA2	AF07
+	GPIO_Set_Alternate_Function(GPIOA, GPIO_PIN_2, AF7);
+	GPIO_Init(GPIOA, GPIO_PIN_2, GPIO_MODE_ALTERNATE,
+			GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+
+	// USART2 RX PA3	AF07
+	GPIO_Set_Alternate_Function(GPIOA, GPIO_PIN_3, AF7);
+	GPIO_Init(GPIOA, GPIO_PIN_3, GPIO_MODE_ALTERNATE,
+			GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+
+	// Initialization of the pins to which the LEDs are connected
+	GPIO_Init(LED_PORT, LED_PIN_RED, GPIO_MODE_OUTPUT,
+			GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+	GPIO_Init(LED_PORT, LED_PIN_YELLOW, GPIO_MODE_OUTPUT,
+				GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+	GPIO_Init(LED_PORT, LED_PIN_GREEN, GPIO_MODE_OUTPUT,
+				GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+	GPIO_Init(LED_PORT, LED_PIN_BLUE, GPIO_MODE_OUTPUT,
+				GPIO_OUTPUT_PUSHPULL, GPIO_SPEED_LOW, GPIO_PULL_NO);
+
+	// By default all LEDs are turned off
+	GPIO_Write_Pin(LED_PORT, LED_PIN_RED, GPIO_PIN_RESET);
+	GPIO_Write_Pin(LED_PORT, LED_PIN_YELLOW, GPIO_PIN_RESET);
+	GPIO_Write_Pin(LED_PORT, LED_PIN_GREEN, GPIO_PIN_RESET);
+	GPIO_Write_Pin(LED_PORT, LED_PIN_BLUE, GPIO_PIN_RESET);
+}
+
+typedef enum {
+	WAIT_COMMAND		= 0x00UL,	/* Waiting for command state					*/
+	PROCESS_COMMAND		= 0x01UL,	/* Processing a command state					*/
+	FEEDBACK			= 0x02UL	/* Sending message to the user state			*/
+} MACHINE_STATE_t;
 
 int main(void)
 {
+	/**
+	 * Initializing FPU before using any float variables.
+	 */
+	FPU_Init_FullAccess();
+
+	__dsb();
+	__isb();
+	/* End of FPU initialization	*/
+
+	boardInit();	// initialization of the board.
+
+	const char welcome_message[] =
+	"*********************************************************************\r\n"
+	"		Hello there!\r\n"
+	"\r\n"
+	"	This is the device for controlling LEDs via UART.\r\n"
+	"\r\n"
+	"This device supports the following commands:\r\n"
+	" * led:red:on		Turns on	red	LED;\r\n"
+	" * led:red:off		Turns off	red	LED;\r\n"
+	" * led:yellow:on	Turns on	yellow	LED;\r\n"
+	" * led:yellow:off	Turns off	yellow	LED;\r\n"
+	" * led:green:on	Turns on	green	LED;\r\n"
+	" * led:green:off	Turns off	green	LED;\r\n"
+	" * led:blue:on	Turns on	blue	LED;\r\n"
+	" * led:blue:off	Turns off	blue	LED;\r\n"
+	" * led:all:on		Turns on	ALL	LEDs;\r\n"
+	" * led:all:off		Turns off	ALL	LEDs;\r\n"
+	"\r\n"
+	"To enter a command just input led:all:on for example and press Enter.\r\n"
+	"Use lowercase letters only.\r\n"
+	"\r\n"
+	"		Let's try!\r\n"
+	"*********************************************************************\r\n";
+
+	// sending welcome message
+	send_message(welcome_message, MESSAGE_INFO);
+
+	const char unsupported_command_message[] = "This command is not supported. Use commands only from the list!\r\n";
+	const char noise_detected_message[] = "The noise detected during receiving the command\r\n"
+			"If the executed command is not what you expected, please re-enter the command.\r\n";
+	const char command_executed_message[] = "Done!\r\n";
+	const char internal_error_message[] = "Internal ERROR occurred. Reset the device!\r\n";
+
+
+	uint32_t main_state_machine_state = WAIT_COMMAND;	// Initial state machine state
+
+	/**
+	 * Noise detected flag.
+	 * This flag is set (==1) if during reception of any character a noise was detected.
+	 * Possible values are:
+	 * -- 1 noise was detected;
+	 * -- 0 noise not detected;
+	 */
+	uint32_t noise_detected_flag = 0UL;
+
+	/**
+	 * Not supported command flag.
+	 * This flag is set (==1) if received command are valid but not supported by state machine.
+	 * Possible values are:
+	 * -- 1 command not supported;
+	 * -- 0 command is  supported;
+	 */
+	uint32_t command_not_sup_flag = 0UL;
+
+	char *command_buffer; // pointer to command buffer that contains command that will be processed.
+
     /* Loop forever */
-	for(;;);
+	for(;;) {
+		switch(main_state_machine_state) {
+		case WAIT_COMMAND:
+			const struct command_buffers* buffers = get_buffers();
+
+			// Selecting the buffer that contains received command
+			if (buffers->buffer_1_status == BUFFER_READY) {
+				command_buffer = buffers->command_buffer1;
+				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_1);
+			} else if (buffers->buffer_1_status == BUFFER_READY_NOISE) {
+				command_buffer = buffers->command_buffer1;
+				noise_detected_flag = 1UL;
+				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_1);
+			} else if (buffers->buffer_2_status == BUFFER_READY) {
+				command_buffer = buffers->command_buffer2;
+				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_2);
+			} else if (buffers->buffer_2_status == BUFFER_READY_NOISE) {
+				command_buffer = buffers->command_buffer2;
+				main_state_machine_state = PROCESS_COMMAND;
+				set_buffer_not_ready(BUFFER_2);
+			}
+			break;
+
+		case PROCESS_COMMAND:
+
+			// Select the LED(s) to turn on/off
+			if (strcmp(command_buffer, "led:red:on") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_RED, GPIO_PIN_SET);
+			}
+			else if (strcmp(command_buffer, "led:red:off") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_RED, GPIO_PIN_RESET);
+			}
+			else if (strcmp(command_buffer, "led:yellow:on") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_YELLOW, GPIO_PIN_SET);
+			}
+			else if (strcmp(command_buffer, "led:yellow:off") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_YELLOW, GPIO_PIN_RESET);
+			}
+			else if (strcmp(command_buffer, "led:green:on") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_GREEN, GPIO_PIN_SET);
+			}
+			else if (strcmp(command_buffer, "led:green:off") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_GREEN, GPIO_PIN_RESET);
+			}
+			else if (strcmp(command_buffer, "led:blue:on") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_BLUE, GPIO_PIN_SET);
+			}
+			else if (strcmp(command_buffer, "led:blue:off") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_BLUE, GPIO_PIN_RESET);
+			}
+			else if (strcmp(command_buffer, "led:all:on") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_RED, GPIO_PIN_SET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_YELLOW, GPIO_PIN_SET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_GREEN, GPIO_PIN_SET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_BLUE, GPIO_PIN_SET);
+			}
+			else if (strcmp(command_buffer, "led:all:off") == 0U) {
+				GPIO_Write_Pin(LED_PORT, LED_PIN_RED, GPIO_PIN_RESET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_YELLOW, GPIO_PIN_RESET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_GREEN, GPIO_PIN_RESET);
+				GPIO_Write_Pin(LED_PORT, LED_PIN_BLUE, GPIO_PIN_RESET);
+			} else {
+				command_not_sup_flag = 1UL;
+			}
+
+			main_state_machine_state = FEEDBACK;
+			break;
+
+		case FEEDBACK:
+			// notify the user about the command execution
+			if (!command_not_sup_flag) {
+				send_message(command_executed_message, MESSAGE_INFO);
+			} else {
+				send_message(unsupported_command_message, MESSAGE_ERROR);
+				command_not_sup_flag = 0UL;	// reset the unsupported command flag.
+			}
+
+			// notify the user that noise was detected during command reception
+			if (noise_detected_flag) {
+				send_message(noise_detected_message, MESSAGE_INFO);
+				noise_detected_flag = 0UL;	// reset the noise detected flag.
+			}
+
+			main_state_machine_state = WAIT_COMMAND;
+			break;
+
+		default:
+			// state machine must not reach this point
+			send_message(internal_error_message, MESSAGE_ERROR);	// message about error
+			main_state_machine_state = WAIT_COMMAND;	// waiting for next_command
+		}
+	}
 }

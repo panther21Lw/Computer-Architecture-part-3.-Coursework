@@ -74,6 +74,21 @@ typedef enum {
 	INTRPT_PRIOR_15	= 0x0FUL,	/*	Priority level 15. LOWEST PRIORITY	*/
 } IRQn_Prior_t;
 
+
+/**
+ * Enables interrupts and configurable fault handlers.
+ */
+static inline void enable_irq(void) {
+	__asm__ __volatile__ ("cpsie i" ::: "memory");
+}
+
+/**
+ * Disables interrupts and configurable fault handlers.
+ */
+static inline void disable_irq(void) {
+	__asm__ __volatile__ ("cpsid i" ::: "memory");
+}
+
 /**
  * This function enables the interrupt line.
  */
